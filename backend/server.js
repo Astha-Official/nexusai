@@ -1,52 +1,38 @@
 const express = require("express");
 const cors = require("cors");
-const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// ── Domain-scoped system prompt with custom AI persona ────────────
-const SYSTEM_PROMPT = `You are NexusAI — a conversational campus intelligence assistant designed for college students.
-You are knowledgeable, warm, and concise. You help students with:
+const SYSTEM_PROMPT = `You are NexusAI — a conversational campus intelligence assistant designed for college students. You help with placements, academics, campus life, career guidance, and mental wellbeing. Be encouraging, use bullet points and emojis, keep responses concise but complete.`;
 
-- 📚 Academics: courses, syllabus, study strategies, exam preparation, assignment guidance
-- 🎓 Placements: resume building, interview preparation, coding problems, aptitude tests, company profiles, internship guidance
-- 🏛️ Campus Life: hostel, mess, clubs, events, sports, fest information
-- 📝 Admissions: fees, documents, enrollment procedures, scholarships
-- 🧠 Career Guidance: domain selection, roadmaps for software engineering, data science, UI/UX design, etc.
-- 😊 Mental Health & Wellbeing: stress management, motivation, time management techniques
-
-Personality:
-- Be encouraging and solution-focused
-- Use bullet points and relevant emojis to make responses scannable
-- Keep responses concise but complete
-- If you don't have specific college data, give accurate general guidance
-- Always end with a useful follow-up suggestion or question to continue the conversation
-
-You maintain full context of the conversation history sent with each request, enabling context-aware, multi-turn dialogue.`;
-
-// ── REST API: /api/chat ────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   try {
     const { messages } = req.body;
 
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: "Invalid messages format. Expected an array." });
-    }
+    const contents = messages.map(m => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: messages,         // full conversation history for multi-turn memory
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: contents
+        })
+      }
+    );
 
-    res.json({ reply: response.content[0].text });
+    const data = await response.json();
+    const reply = data.candidates[0].content.parts[0].text;
+    res.json({ reply });
 
   } catch (error) {
     console.error("NexusAI API Error:", error.message);
@@ -54,17 +40,10 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ── Health check endpoint ─────────────────────────────────────────
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    project: "NexusAI — Conversational Campus Intelligence Assistant",
-    model: "claude-sonnet-4-20250514",
-    message: "NexusAI backend is running!",
-  });
+  res.json({ status: "ok", project: "NexusAI", model: "gemini-1.5-flash", message: "NexusAI backend is running!" });
 });
 
-// ── Start server ──────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`\n🧠 NexusAI Backend running at http://localhost:${PORT}`);
