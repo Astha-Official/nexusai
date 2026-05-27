@@ -45,7 +45,7 @@ const reply = data.candidates[0].content.parts[0].text;
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", project: "NexusAI", model: "gemini-1.5-flash", message: "NexusAI backend is running!" });
+  res.json({ status: "ok", project: "NexusAI", model: "gemini-2.0-flash", message: "NexusAI backend is running!" });
 });
 
 const PORT = process.env.PORT || 3001;
