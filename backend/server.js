@@ -53,3 +53,4 @@ app.listen(PORT, () => {
   console.log(`\n🧠 NexusAI Backend running at http://localhost:${PORT}`);
   console.log(`✅ Health check: http://localhost:${PORT}/api/health\n`);
 });
+ 
