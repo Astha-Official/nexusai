@@ -31,7 +31,11 @@ app.post("/api/chat", async (req, res) => {
     );
 
     const data = await response.json();
-    const reply = data.candidates[0].content.parts[0].text;
+    if (!data.candidates || !data.candidates[0]) {
+  console.error("Gemini response:", JSON.stringify(data));
+  return res.status(500).json({ error: "Something went wrong. Please try again." });
+}
+const reply = data.candidates[0].content.parts[0].text;
     res.json({ reply });
 
   } catch (error) {
